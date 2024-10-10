@@ -1,0 +1,17 @@
+version: "3.7"
+services:
+  monitoramento:
+    build: .
+    container_name: monitoramento_container
+    volumes:
+      - "./:/app"  # Monta o diretório do projeto no container
+      - "/home/sidney/Downloads:/home/sidney/Downloads"  # Monta o diretório Downloads no container
+    environment:
+      - PYTHONUNBUFFERED=1  # Para garantir que os logs sejam exibidos em tempo real
+    restart: unless-stopped  # Evita que o container reinicie sem necessidade
+    command: python /app/script.py  # Executa o script
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
