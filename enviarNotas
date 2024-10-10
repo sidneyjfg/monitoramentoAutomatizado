@@ -1,0 +1,118 @@
+#!/bin/bash
+
+# Carregar as variáveis de ambiente do arquivo .env
+export $(grep -v '^#' /usr/local/bin/.env | xargs)
+
+# Função para enviar arquivos via SCP com sshpass e rodar um comando no servidor remoto via SSH
+enviar_arquivo() {
+    arquivo=$1
+    cliente=$2
+
+    case $cliente in
+        1)
+            sshpass -p "$ARCLOR_PASS" scp -P"$ARCLOR_PORT" "$arquivo" "$ARCLOR_USER"@"$ARCLOR_SERVER":/tmp
+            sshpass -p "$ARCLOR_PASS" ssh -p"$ARCLOR_PORT" "$ARCLOR_USER"@"$ARCLOR_SERVER" 'sudo su - eacadm -c "/u/saci/shells/importa_notas.sh"'
+            ;;
+        2)
+            sshpass -p "$TRES_PASS" scp -P"$TRES_PORT" "$arquivo" "$TRES_USER"@"$TRES_SERVER":/tmp
+            sshpass -p "$TRES_PASS" ssh -p"$TRES_PORT" "$TRES_USER"@"$TRES_SERVER" 'sudo su - eacadm -c "/u/saci/shells/importa_notas.sh"'
+            ;;
+        3)
+            sshpass -p "$LORENZETTI_PASS" scp -P"$LORENZETTI_PORT" "$arquivo" "$LORENZETTI_USER"@"$LORENZETTI_SERVER":/tmp
+            sshpass -p "$LORENZETTI_PASS" ssh -p"$LORENZETTI_PORT" "$LORENZETTI_USER"@"$LORENZETTI_SERVER" 'sudo su - eacadm -c "/u/saci/shells/importa_notas.sh"'
+            ;;
+        4)
+            # Separar os arquivos em duas variáveis e enviar cada um separadamente (Mueller)
+            arquivo1="/home/sidney/Downloads/mueller/notasFG.csv"
+            arquivo2="/home/sidney/Downloads/mueller/notasEL.csv"
+            sshpass -p "$MUELLER_PASS" scp -P"$MUELLER_PORT" "$arquivo1" "$arquivo2" "$MUELLER_USER"@"$MUELLER_SERVER":/tmp
+            sshpass -p "$MUELLER_PASS" ssh -p"$MUELLER_PORT" "$MUELLER_USER"@"$MUELLER_SERVER" 'sudo su - eacadm -c "/u/saci/shells/importa_notas.sh"'
+            ;;
+        5)
+            # Separar os arquivos em duas variáveis e enviar cada um separadamente (Muffato)
+            arquivo1="/home/sidney/Downloads/muffato/notasPR.csv"
+            arquivo2="/home/sidney/Downloads/muffato/notasSP.csv"
+            sshpass -p "$MUFFATO_PASS" scp -P"$MUFFATO_PORT" "$arquivo1" "$arquivo2" "$MUFFATO_USER"@"$MUFFATO_SERVER":/tmp
+            sshpass -p "$MUFFATO_PASS" ssh -p"$MUFFATO_PORT" "$MUFFATO_USER"@"$MUFFATO_SERVER" 'sudo su - eacadm -c "/u/saci/shells/importa_notas.sh"'
+            ;;
+        6)
+            # Adicionar a lógica para o novo cliente Pirahy
+            sshpass -p "$PIRAHY_PASS" scp -P"$PIRAHY_PORT" "/home/sidney/Downloads/pirahy/notas.csv" "$PIRAHY_USER"@"$PIRAHY_SERVER":/tmp
+            sshpass -p "$PIRAHY_PASS" ssh -p"$PIRAHY_PORT" "$PIRAHY_USER"@"$PIRAHY_SERVER" 'sudo su - eacadm -c "bash /u/saci/shells/importa_notas.sh"'
+            ;;
+        *)
+            echo "Cliente inválido!"
+            ;;
+    esac
+}
+
+# Verificar se foi passado um argumento
+if [ -z "$1" ]; then
+    # Se não, exibir o menu de escolha
+    echo "Escolha qual arquivo deseja enviar:"
+    echo "1. notas.csv (Arcelor)"
+    echo "2. notas.csv (Tres)"
+    echo "3. notas.csv (Lorenzetti)"
+    echo "4. notasFG.csv e notasEL.csv (Mueller)"
+    echo "5. notasPR.csv e notasSP.csv (Muffato)"
+    echo "6. notas.csv (Pirahy)"
+    echo "7. Todos"
+    read -p "Digite o número do arquivo: " arquivo_opcao
+else
+    # Caso contrário, usar o argumento passado
+    arquivo_opcao=$1
+fi
+
+# Associar a escolha a um arquivo e cliente automaticamente
+case $arquivo_opcao in
+    1)
+        arquivo="/home/sidney/Downloads/arcelor/notas.csv"
+        cliente=1
+        enviar_arquivo "$arquivo" "$cliente"
+        ;;
+    2)
+        arquivo="/home/sidney/Downloads/tres/notas.csv"
+        cliente=2
+        enviar_arquivo "$arquivo" "$cliente"
+        ;;
+    3)
+        arquivo="/home/sidney/Downloads/lorenzetti/notas.csv"
+        cliente=3
+        enviar_arquivo "$arquivo" "$cliente"
+        ;;
+    4)
+        cliente=4
+        enviar_arquivo "" "$cliente" # Os dois arquivos são enviados diretamente no case
+        ;;
+    5)
+        cliente=5
+        enviar_arquivo "" "$cliente" # Os dois arquivos são enviados diretamente no case
+        ;;
+    6)
+        # Enviar o arquivo para Pirahy
+        arquivo="/home/sidney/Downloads/pirahy/notas.csv"
+        cliente=6
+        enviar_arquivo "$arquivo" "$cliente"
+        ;;
+    7)
+        # Enviar todos os arquivos
+        echo "Enviando nota da Arcelor..."
+        enviar_arquivo "/home/sidney/Downloads/arcelor/notas.csv" 1
+        echo "Enviando nota da TresCorações..."
+        enviar_arquivo "/home/sidney/Downloads/tres/notas.csv" 2
+        echo "Enviando nota da Lorenzetti..."
+        enviar_arquivo "/home/sidney/Downloads/lorenzetti/notas.csv" 3
+        echo "Enviando nota da Mueller..."
+        enviar_arquivo "" 4  # Enviar dois arquivos diretamente para Mueller
+        echo "Enviando notas da Muffato..."
+        enviar_arquivo "" 5  # Enviar dois arquivos diretamente para Muffato
+        echo "Enviando nota da Pirahy..."
+        enviar_arquivo "/home/sidney/Downloads/pirahy/notas.csv" 6
+
+        echo "Envio de notas finalizado!"
+        ;;
+    *)
+        echo "Opção de arquivo inválida!"
+        exit 1
+        ;;
+esac
