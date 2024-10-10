@@ -1,0 +1,37 @@
+clientes:
+  arcelor:
+    user: ec2-eac
+    server: arcelor.nerus.com.br
+    port: 31971
+    password: 4rC3l0R@Nr$$23#
+    path: /tmp
+  tres:
+    user: ec2-eac
+    server: trescoracoes.nerus.com.br
+    port: 31971
+    password: 3C0r4C03$@Nr90#*
+    path: /tmp
+  lorenzetti:
+    user: ec2-eac
+    server: lorenzetti-full.nerus.com.br
+    port: 31971
+    password: L0r3Nz3$!Nr$J@n24@!
+    path: /tmp
+  mueller:
+    user: ec2-eac
+    server: mueller.nerus.com.br
+    port: 31971
+    password: Mu3ll3R@Nr2022#*
+    path: /tmp
+  muffato:
+    user: ec2-eac
+    server: muffato.nerus.com.br
+    port: 31971
+    password: MuFf4T0@Nr2022#*
+    path: /tmp
+  pirahy:
+    user: ec2-eac
+    server: pirahy.nerus.com.br
+    port: 31971
+    password: P1r4hY@Nr2021#*
+    path: /tmp
