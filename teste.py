@@ -1,8 +1,14 @@
 import os
+import yaml
 import subprocess
 import openpyxl
 import csv
 import re
+
+# Função para carregar a configuração a partir do arquivo YAML
+def carregar_configuracao():
+    with open("clientes.yml", "r") as f:
+        return yaml.safe_load(f)
 
 # Função para extrair letras maiúsculas do nome do arquivo
 def extrair_maiusculas(nome_arquivo):
@@ -24,6 +30,8 @@ def xlsx_to_csv(xlsx_file, output_dir, delimiter='#'):
             return None
         
         sheet = wb[wb.sheetnames[1]]
+        
+        # Extrair letras maiúsculas do nome do arquivo
         nome_base = "notas"
         maiusculas = extrair_maiusculas(os.path.basename(xlsx_file))
 
@@ -31,12 +39,15 @@ def xlsx_to_csv(xlsx_file, output_dir, delimiter='#'):
         if maiusculas:
             nome_base += maiusculas
 
+        # Nome do arquivo CSV convertido
         csv_filename = f"{nome_base}.csv"
         csv_file = os.path.join(output_dir, csv_filename)
         
+        # Escrever os dados da segunda aba em um arquivo CSV
         with open(csv_file, mode='w', newline='') as f:
             writer = csv.writer(f, delimiter=delimiter)
             for row in sheet.iter_rows(values_only=True):
+                # Usar a função formatar_valor para formatar os valores corretamente
                 formatted_row = [formatar_valor(cell) for cell in row]
                 writer.writerow(formatted_row)
         
@@ -48,82 +59,63 @@ def xlsx_to_csv(xlsx_file, output_dir, delimiter='#'):
 
 # Função para enviar arquivo via SCP e rodar o script remoto
 def enviar_arquivo(cliente_nome, arquivos):
-    cliente_user = os.getenv(f"CLIENTE_{cliente_nome.upper()}_USER")
-    cliente_server = os.getenv(f"CLIENTE_{cliente_nome.upper()}_SERVER")
-    cliente_port = os.getenv(f"CLIENTE_{cliente_nome.upper()}_PORT")
-    cliente_password = os.getenv(f"CLIENTE_{cliente_nome.upper()}_PASSWORD")
-    cliente_path = os.getenv(f"CLIENTE_{cliente_nome.upper()}_PATH")
+    config = carregar_configuracao()
 
-    # Exibir a senha capturada para verificar como está sendo recebida
-    print(f"Senha capturada para {cliente_nome}: {cliente_password}")
-
-    if not cliente_user or not cliente_server:
-        print(f"Credenciais do cliente {cliente_nome} não encontradas.")
+    cliente = config["clientes"].get(cliente_nome)
+    if not cliente:
+        print(f"Cliente {cliente_nome} não encontrado!")
         return
+
+    user = cliente["user"]
+    server = cliente["server"]
+    port = cliente["port"]
+    password = cliente["password"]
+    path = cliente["path"]
 
     for arquivo in arquivos:
         if not os.path.isfile(arquivo):
             print(f"Arquivo {arquivo} não encontrado para {cliente_nome}.")
             continue
 
-        # Ajuste o comando SCP envolvendo a senha com aspas simples e escape correto
-        comando_scp = f"sshpass -p '{cliente_password}' scp -o StrictHostKeyChecking=no -P{cliente_port} {arquivo} {cliente_user}@{cliente_server}:{cliente_path}"
-        print(f"Comando SCP: {comando_scp}")
+        # Enviar o arquivo via SCP (desativar verificação de chave do host)
+        comando_scp = f"sshpass -p '{password}' scp -o StrictHostKeyChecking=no -P{port} {arquivo} {user}@{server}:{path}"
+        print(f"Comando SCP: {comando_scp}")  # Exibir o comando SCP
         subprocess.run(comando_scp, shell=True, capture_output=False, check=True)
-    
-    executar_importa_notas = os.getenv("EXECUTAR_IMPORTA_NOTAS", "false").lower() == "true"
-    
-    if executar_importa_notas:
-        # Executa o script remoto apenas se a variável de controle permitir
+
+        # Executar o script remoto e capturar os logs no terminal (desativar verificação de chave do host)
         comando_ssh = (
-            f"sshpass -p '{cliente_password}' ssh -o StrictHostKeyChecking=no -p{cliente_port} {cliente_user}@{cliente_server} "
+            f"sshpass -p '{password}' ssh -o StrictHostKeyChecking=no -p{port} {user}@{server} "
             f"'sudo su - eacadm -c \"/u/saci/shells/importa_notas.sh\" 2>&1'"
         )
-        print(f"Comando SSH: {comando_ssh}")
+        print(f"Comando SSH: {comando_ssh}")  # Exibir o comando SSH
         subprocess.run(comando_ssh, shell=True, capture_output=False, check=True)
-    else:
-        print(f"Execução do script remoto 'importa_notas' desativada para o cliente {cliente_nome}.")
-
-
-
-
-# Função para buscar dinamicamente os clientes nas variáveis de ambiente
-def buscar_clientes():
-    clientes = []
-    for key, value in os.environ.items():
-        if key.startswith("CLIENTE_") and key.endswith("_USER"):
-            cliente_nome = key.split("_")[1].lower()  # Extrai o nome do cliente a partir da variável
-            clientes.append(cliente_nome)
-    return clientes
 
 # Função principal para processar os clientes e enviar arquivos
 def processar_clientes():
-    # Pega o diretório base a partir da variável de ambiente BASE_DIR
-    downloads_dir = os.getenv('BASE_DIR', '/home/')  # Diretório base definido no docker-compose.yml
+    config = carregar_configuracao()
+    downloads_dir = "/home/sidney/Downloads"  # Diretório onde os arquivos estão
 
-    # Buscar dinamicamente os clientes a partir das variáveis de ambiente
-    clientes = buscar_clientes()
-
-    for cliente_nome in clientes:
-        arquivos_especiais = os.getenv(f"CLIENTE_{cliente_nome.upper()}_ARQUIVOS_ESPECIAIS")
-        
-        if arquivos_especiais:
-            sufixos = arquivos_especiais.split(',')
-            arquivos_excel = [os.path.join(downloads_dir, f"{cliente_nome}{sufixo}.xlsx") for sufixo in sufixos]
+    for cliente_nome, dados_cliente in config["clientes"].items():
+        if cliente_nome == "mueller":
+            # Para Mueller, temos dois arquivos: FG e EL
+            arquivos_excel = [os.path.join(downloads_dir, f"{cliente_nome}FG.xlsx"), os.path.join(downloads_dir, f"{cliente_nome}EL.xlsx")]
+        elif cliente_nome == "muffato":
+            # Para Muffato, temos dois arquivos: PR e SP
+            arquivos_excel = [os.path.join(downloads_dir, f"{cliente_nome}PR.xlsx"), os.path.join(downloads_dir, f"{cliente_nome}SP.xlsx")]
         else:
+            # Arquivo padrão
             arquivos_excel = [os.path.join(downloads_dir, f"{cliente_nome}.xlsx")]
 
         arquivos_csv = []
         
+        # Verificar se o arquivo Excel existe para o cliente
         for xlsx_file in arquivos_excel:
             if os.path.isfile(xlsx_file):
-                # Verificar se a pasta de saída para o cliente existe
                 output_dir = os.path.join(downloads_dir, cliente_nome)
-                
+
+                # Criar o diretório de saída se não existir
                 if not os.path.exists(output_dir):
-                    # Criar a pasta do cliente se não existir
                     os.makedirs(output_dir)
-                    print(f"Diretório criado para o cliente {cliente_nome}: {output_dir}")
 
                 # Converter o arquivo Excel para CSV
                 csv_file = xlsx_to_csv(xlsx_file, output_dir)

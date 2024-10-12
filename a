@@ -1,0 +1,6 @@
+sshpass -p 'L0r3Nz3$!Nr$J@n24@!' scp -o StrictHostKeyChecking=no -P31971 /home/sidney/Downloads/lorenzetti/notas.csv ec2-eac@lorenzetti-full.nerus.com.br:/tmp
+
+sshpass -p '3C0r4C03$@Nr90#*' scp -o StrictHostKeyChecking=no -P31971 /home/sidney/Downloads/tres/notas.csv ec2-eac@trescoracoes.nerus.com.br:/tmp
+
+alias lorenzetti='sshpass -p'\''$L0r3Nz3$!Nr$J@n24@!'\'' ssh ec2-eac@lorenzetti-full.nerus.com.br  -p 31971'
+alias tres='sshpass -p'\''3C0r4C03$@Nr90#*'\'' ssh ec2-eac@trescoracoes.nerus.com.br -p 31971'
